@@ -31,6 +31,9 @@ static struct list ready_list;
 // sleep list 정의
 static struct list sleep_list;
 
+// wait list 정의
+static struct list wait_list;
+
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -65,8 +68,8 @@ static void init_thread (struct thread *, const char *name, int priority);
 static void do_schedule(int status);
 static void schedule (void);
 static tid_t allocate_tid (void);
-static bool wakeup_less (const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
-
+static bool wakeup_less (const struct list_elem *a_elem, const struct list_elem *b_elem, void *aux UNUSED);
+void thread_wakeup(int64_t ticks);
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -183,8 +186,7 @@ thread_print_stats (void) {
    PRIORITY, but no actual priority scheduling is implemented.
    Priority scheduling is the goal of Problem 1-3. */
 tid_t
-thread_create (const char *name, int priority,
-		thread_func *function, void *aux) {
+thread_create (const char *name, int priority, thread_func *function, void *aux) {
 	struct thread *t;
 	tid_t tid;
 
@@ -212,6 +214,15 @@ thread_create (const char *name, int priority,
 
 	/* Add to run queue. */
 	thread_unblock (t);
+
+	// 현재 스레드 curr에 저장
+	struct thread *curr = thread_current(); 
+	
+	// 생성하는 스레드의 priority 와 현재 돌고 있는 스레드의 priority를 비교하여 
+	// 생성하는 스레드의 priority가 더 크면 thread_yield() 호출
+	if (priority > curr->priority){
+		thread_yield();
+	}
 
 	return tid;
 }
@@ -246,7 +257,11 @@ thread_unblock (struct thread *t) {
 
 	old_level = intr_disable ();
 	ASSERT (t->status == THREAD_BLOCKED);
-	list_push_back (&ready_list, &t->elem);
+	
+	// 어떤 쓰레드가 ready_list에 추가될 때, 현재 running 되고 있는 쓰레드의 priority와 비교하여
+	// 추가되는 쓰레드의 priority가 크면 CPU yield 시키기
+	list_insert_ordered(&ready_list, &t->elem, cmp_priority, NULL);
+	
 	t->status = THREAD_READY;
 	intr_set_level (old_level);
 }
@@ -309,7 +324,7 @@ thread_yield (void) {
 
 	old_level = intr_disable ();
 	if (curr != idle_thread)
-		list_push_back (&ready_list, &curr->elem);
+		list_insert_ordered (&ready_list, &curr->elem, cmp_priority, NULL);
 	do_schedule (THREAD_READY);
 	intr_set_level (old_level);
 }
@@ -327,10 +342,10 @@ thread_sleep (int64_t ticks){
 
 	// 현재 스레드가 idle(쉬는 상태) 스레드가 아니면 
 	if (curr != idle_thread){
-		// sleep_list에 시간이 가장 적게남은 스레드를 맨앞으로 정렬하여 list추가 -> global tick 안써도 됨
-		list_insert_ordered (&sleep_list, &curr->elem, wakeup_less, NULL);
 		// wake up을 위해 local tick 저장
 		curr->wakeup_tick = ticks;
+		// sleep_list에 시간이 가장 적게남은 스레드를 맨앞으로 정렬하여 list추가 -> global tick 안써도 됨
+		list_insert_ordered (&sleep_list, &curr->elem, wakeup_less, NULL);
 		// 스레드 상태 blocked(sleeping) 상태로 바꾸고 schedule() 호출
 		thread_block();
 	}
@@ -347,12 +362,11 @@ thread_wakeup(int64_t ticks){
 	struct thread *hd_sleep_list;
 	
 	// 시간 체크해서 wakeup_tick보다 크거나 같으면 sleep queue 에서 running queue
-	while (list_empty(&sleep_list) != 0){
-		// sleep_list 맨 앞 스레드 wakcup_ticq 보다 ticks가 커지면 ready_list로 보내기
-		hd_sleep_list = list_front(&sleep_list);
+	while (!list_empty(&sleep_list)){
+		// sleep_list 맨 앞 스레드 wakeup_tick 보다 ticks가 커지면 ready_list로 보내기
+		hd_sleep_list = list_entry(list_front(&sleep_list), struct thread, elem);
 		if (hd_sleep_list->wakeup_tick <= ticks){
 			list_pop_front(&sleep_list);
-			list_push_back(&ready_list, &(hd_sleep_list->elem));
 			// ready_list로 추가하고 thread 상태 unblock(ready)해주기
 			thread_unblock(hd_sleep_list);
 			}
@@ -366,6 +380,14 @@ thread_wakeup(int64_t ticks){
 void
 thread_set_priority (int new_priority) {
 	thread_current ()->priority = new_priority;
+	//list_sort (&ready_list, cmp_priority, NULL);
+	if (list_empty(&ready_list)){
+		return;
+	}
+	if (new_priority < list_entry(list_front(&ready_list), struct thread, elem)->priority){
+		thread_yield();
+	}
+
 }
 
 /* Returns the current thread's priority. */
@@ -643,7 +665,7 @@ allocate_tid (void) {
 	return tid;
 }
 
-// list_insert_odered 3번째 매개변수 활용. list의 element를 스레드 찾아서 스레드로 반환. 
+// list_insert_ordered 3번째 매개변수 활용. list의 element를 스레드 찾아서 스레드로 반환. 
 // 남은 시간이 적은 스레드 비교해주는 함수
 static bool
 wakeup_less (const struct list_elem *a_elem, const struct list_elem *b_elem, void *aux UNUSED) {
@@ -652,4 +674,15 @@ wakeup_less (const struct list_elem *a_elem, const struct list_elem *b_elem, voi
   const struct thread *b = list_entry (b_elem, struct thread, elem);
   
   return a->wakeup_tick < b->wakeup_tick;
+}
+
+// list_insert_ordered 3번째 매개변수 활용. list의 element를 스레드 찾아서 스레드로 반환. 
+// 우선순위 높은 스레드 비교해주는 함수
+bool
+cmp_priority (const struct list_elem *a_elem, const struct list_elem *b_elem, void *aux UNUSED) {
+  
+  const struct thread *a = list_entry (a_elem, struct thread, elem);
+  const struct thread *b = list_entry (b_elem, struct thread, elem);
+  
+  return a->priority > b->priority;
 }
