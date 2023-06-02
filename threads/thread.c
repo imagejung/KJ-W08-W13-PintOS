@@ -31,9 +31,6 @@ static struct list ready_list;
 // sleep list 정의
 static struct list sleep_list;
 
-// wait list 정의
-static struct list wait_list;
-
 /* Idle thread. */
 static struct thread *idle_thread;
 
@@ -363,8 +360,8 @@ thread_wakeup(int64_t ticks){
 	
 	// 시간 체크해서 wakeup_tick보다 크거나 같으면 sleep queue 에서 running queue
 	while (!list_empty(&sleep_list)){
-		// sleep_list 맨 앞 스레드 wakeup_tick 보다 ticks가 커지면 ready_list로 보내기
 		hd_sleep_list = list_entry(list_front(&sleep_list), struct thread, elem);
+		// sleep_list 맨 앞 스레드 wakeup_tick 보다 ticks가 커지면 ready_list로 보내기
 		if (hd_sleep_list->wakeup_tick <= ticks){
 			list_pop_front(&sleep_list);
 			// ready_list로 추가하고 thread 상태 unblock(ready)해주기
@@ -379,15 +376,18 @@ thread_wakeup(int64_t ticks){
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
 thread_set_priority (int new_priority) {
-	thread_current ()->priority = new_priority;
+	// 그냥 priority는 변경될수도 있으므로, original priority 사용
+	thread_current ()->origin_priority = new_priority;
+	refresh_priority();
+	priority_preemption();
+		
 	//list_sort (&ready_list, cmp_priority, NULL);
-	if (list_empty(&ready_list)){
-		return;
-	}
-	if (new_priority < list_entry(list_front(&ready_list), struct thread, elem)->priority){
-		thread_yield();
-	}
-
+	// if (list_empty(&ready_list)){
+	// 	return;
+	// }
+	// if (new_priority < list_entry(list_front(&ready_list), struct thread, elem)->priority){
+	// 	thread_yield();
+	// }
 }
 
 /* Returns the current thread's priority. */
@@ -485,6 +485,9 @@ init_thread (struct thread *t, const char *name, int priority) {
 	t->tf.rsp = (uint64_t) t + PGSIZE - sizeof (void *);
 	t->priority = priority;
 	t->magic = THREAD_MAGIC;
+
+	t->wait_on_lock = NULL;
+	list_init(&t->donations); 
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -685,4 +688,18 @@ cmp_priority (const struct list_elem *a_elem, const struct list_elem *b_elem, vo
   const struct thread *b = list_entry (b_elem, struct thread, elem);
   
   return a->priority > b->priority;
+}
+
+// 현재 쓰레드 priority < ready_list 맨 앞 쓰레드 priority 이면, 현재 쓰레드 thread_yield(); 
+void 
+priority_preemption (void) {
+	struct thread *curr = thread_current();
+	if(!list_empty(&ready_list)){
+		// ready_list 맨 앞 쓰레드 가져오기
+		struct thread *hd_ready_list = list_entry(list_front(&ready_list), struct thread, elem);
+		// 현재 쓰레드 priority < ready_list 맨 앞 쓰레드 priority 이면, 현재 쓰레드 thread_yield();
+		if (curr->priority < hd_ready_list->priority){
+			thread_yield();
+		}
+	}
 }
