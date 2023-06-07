@@ -38,28 +38,23 @@ process_init (void) {
  * before process_create_initd() returns. Returns the initd's
  * thread id, or TID_ERROR if the thread cannot be created.
  * Notice that THIS SHOULD BE CALLED ONCE. */
-tid_t 
-process_create_initd(const char *file_name){
-    char *fn_copy;
-    tid_t tid;
+tid_t
+process_create_initd (const char *file_name) {
+	char *fn_copy;
+	tid_t tid;
 
-    /* Make a copy of FILE_NAME.
-     * Otherwise there's a race between the caller and load(). */
-    fn_copy = palloc_get_page(0);
-    if (fn_copy == NULL)
-        return TID_ERROR;
-    strlcpy(fn_copy, file_name, PGSIZE);
+	/* Make a copy of FILE_NAME.
+	 * Otherwise there's a race between the caller and load(). */
+	fn_copy = palloc_get_page (0);
+	if (fn_copy == NULL)
+		return TID_ERROR;
+	strlcpy (fn_copy, file_name, PGSIZE);
 
-    // Argument Passing ~
-    char *save_ptr;
-    strtok_r(file_name, " ", &save_ptr);
-    // ~ Argument Passing
-
-    /* Create a new thread to execute FILE_NAME. */
-    tid = thread_create(file_name, PRI_DEFAULT, initd, fn_copy);
-    if (tid == TID_ERROR)
-        palloc_free_page(fn_copy);
-    return tid;
+	/* Create a new thread to execute FILE_NAME. */
+	tid = thread_create (file_name, PRI_DEFAULT, initd, fn_copy);
+	if (tid == TID_ERROR)
+		palloc_free_page (fn_copy);
+	return tid;
 }
 
 /* A thread function that launches first user process. */
@@ -168,52 +163,49 @@ error:
 // User명령어 실행위해 프로그램을 메모리에 적재 + 실행
 // 파일이름 인자로 받아서 저장(문자열). 실행 프로그램파일과 옵션 parsing(load함수에서) 구현
 int
-process_exec(void *f_name){ // 인자: 실행하려는 이진 파일의 이름
-    char *file_name = f_name;
-    bool success;
+process_exec (void *f_name) {
+	// f_name 매개변수는 문자열. (void *)로 받았음으로 (char *)로 형변환
+	char *file_name = f_name;
+	bool success;
 
-    /* We cannot use the intr_frame in the thread structure.
-     * This is because when current thread rescheduled,
-     * it stores the execution information to the member. */
-    struct intr_frame _if;
-    _if.ds = _if.es = _if.ss = SEL_UDSEG;
-    _if.cs = SEL_UCSEG;
-    _if.eflags = FLAG_IF | FLAG_MBS;
 
-    /* We first kill the current context */
-    process_cleanup();
+	// (구현) Project2 _ Argument Passing
+	char file_name_copy[128]; // file_name 복사본, 핀토스는 커맨드라인 길이 제한 128Bytes 라 128 
+	memcpy(file_name_copy, file_name, strlen(file_name)+1); // len+1 이유는 '\n' 문자까지 읽어오기 위해
 
-    // (구현) Project2 Argument Passing
-    char *parse[128];
-    char *token, *save_ptr;
-    int count = 0;
-    for (token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr))
-        parse[count++] = token;
-    // (구현) Project2 Argument Passing
 
-    /* And then load the binary */
-    success = load(file_name, &_if);
-    // 이진 파일을 디스크에서 메모리로 로드한다.
-    // 로드된 후 실행할 메인 함수의 시작 주소 필드 초기화 (if_.rip)
-    // user stack의 top 포인터 초기화 (if_.rsp)
-    // 위 과정을 성공하면 실행을 계속하고, 실패하면 스레드가 종료된다.
+	/* We cannot use the intr_frame in the thread structure.
+	 * This is because when current thread rescheduled,
+	 * it stores the execution information to the member. */
+	// intr_frame(인터럽트 스택 프레임)구조체에 기존 프로세스 정보(레지스터 외) 옮겨 담음
+	struct intr_frame _if;
+	_if.ds = _if.es = _if.ss = SEL_UDSEG;
+	_if.cs = SEL_UCSEG;
+	_if.eflags = FLAG_IF | FLAG_MBS;
 
-    // Argument Passing ~
-    argument_stack(parse, count, &_if.rsp); // 함수 내부에서 parse와 rsp의 값을 직접 변경하기 위해 주소 전달
-    _if.R.rdi = count;
-    _if.R.rsi = (char *)_if.rsp + 8;
+	/* We first kill the current context */
+	// 새로운 실행파일 프로세스(스레드)에 담기전에 현재 프로세스 context(page 정보) 지워줌
+	process_cleanup ();
 
-    hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)_if.rsp, true); // user stack을 16진수로 프린트
-    // ~ Argument Passing
+	// (구현) Project2 _ Argument Passing
+	memset(&_if, 0, sizeof _if);
 
-    /* If load failed, quit. */
-    palloc_free_page(file_name);
-    if (!success)
-        return -1;
-
-    /* Start switched process. */
-    do_iret(&_if);
-    NOT_REACHED();
+	/* And then load the binary */
+	// 위에서 정보를 옮겨담은 file_name과 _if 현재 프로세스에 load해줌 (bool type 성공:1, 실패:0)
+	success = load (file_name, &_if);
+	
+	hex_dump(_if.rsp, _if.rsp, USER_STACK - (uint64_t)_if.rsp, true);
+	
+	/* If load failed, quit. */
+	if (!success)
+		return -1;
+	
+	// load가 끝나면 메모리(페이지) 반환 (load에서 메모리(페이지) 할당함)
+	palloc_free_page (file_name);
+	/* Start switched process. */
+	// load실행되면 context switching 진행
+	do_iret (&_if);
+	NOT_REACHED ();
 }
 
 
@@ -233,7 +225,7 @@ process_wait (tid_t child_tid UNUSED) {
 	 * XXX:       implementing the process_wait. */
 	
 	// (구현) Project2 Argument Passing
-	for(int i=0; i<10000000000; i++){}
+	while(1){}
 	
 	return -1;
 }
@@ -360,6 +352,22 @@ load (const char *file_name, struct intr_frame *if_) {
 	bool success = false;
 	int i;
 
+	
+	// (구현) Project2 _ Argument Passing
+	char *arg_list[128];
+	char *token, *save_ptr;
+	int token_count = 0;
+
+	token = strtok_r(file_name, " ", &save_ptr); // 공백으로 잘린 첫번째 부분 return, &save_ptr은 남은부분 맨앞 가리키는 포인터
+	arg_list[token_count] = token; // arg_list[0] = file_name_first (첫번째 부분)
+
+	while (token != NULL) { // 뒷 부분 공백으로 계속 잘라서 arg_list[]에 저장
+		token = strtok_r (NULL, " ", &save_ptr);
+		token_count++;
+		arg_list[token_count] = token;
+	}
+
+
 	/* Allocate and activate page directory. */
 	t->pml4 = pml4_create ();
 	if (t->pml4 == NULL)
@@ -447,6 +455,9 @@ load (const char *file_name, struct intr_frame *if_) {
 
 	/* TODO: Your code goes here.
 	 * TODO: Implement argument passing (see project2/argument_passing.html). */
+	// (구현) Project2 _ Argument Passing
+	// 위에서 file_name 받아와서 parsing한 인자값들 스택에 올리는 함수
+	argument_stack(arg_list, token_count, if_);
 
 	success = true;
 
