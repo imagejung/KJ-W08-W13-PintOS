@@ -220,7 +220,7 @@ __do_fork (void *aux) {
 		do_iret (&if_);
 error:
 	sema_up(&current->load_sema);
-	exit(TID_ERROR);
+	exit(-2);
 }
 
 /* Switch the current execution context to the f_name.
