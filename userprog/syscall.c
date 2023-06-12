@@ -220,6 +220,7 @@ int read(int fd, void *buffer, unsigned size)
 	int bytes_read = 0;
 
 	lock_acquire(&filesys_lock);
+
 	if (fd == 0)
 	{
 		for (int i = 0; i < size; i++)
