@@ -220,7 +220,8 @@ int read(int fd, void *buffer, unsigned size)
 	int bytes_read = 0;
 
 	lock_acquire(&filesys_lock);
-	if (fd == STDIN_FILENO)
+
+	if (fd == 0)
 	{
 		for (int i = 0; i < size; i++)
 		{
@@ -256,7 +257,7 @@ int write(int fd, const void *buffer, unsigned size)
 {
 	check_address(buffer);
 	int bytes_write = 0;
-	if (fd == STDOUT_FILENO)
+	if (fd == 1)
 	{
 		putbuf(buffer, size);
 		bytes_write = size;

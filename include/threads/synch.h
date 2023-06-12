@@ -27,7 +27,8 @@ void lock_acquire (struct lock *);
 bool lock_try_acquire (struct lock *);
 void lock_release (struct lock *);
 bool lock_held_by_current_thread (const struct lock *);
-
+void remove_with_lock(struct lock *lock);
+void refresh_priority(void);
 /* Condition variable. */
 struct condition {
 	struct list waiters;        /* List of waiting threads. */
@@ -38,14 +39,13 @@ void cond_wait (struct condition *, struct lock *);
 void cond_signal (struct condition *, struct lock *);
 void cond_broadcast (struct condition *, struct lock *);
 
-// 추가 구현 
-bool cmp_sem_priority (const struct list_elem *a_elem, const struct list_elem *b_elem, void *aux);
-bool donation_sort (const struct list_elem *a, const struct list_elem *b, void *aux);
-
-void donate_priority (void);
-void remove_with_lock (struct lock *lock);
-void refresh_priority (void);
-
+bool cmp_sem_priority(const struct list_elem *a, const struct list_elem *b, void *aux);
+bool wakeup_sort (const struct list_elem *a_, const struct list_elem *b_,
+            void *aux );
+bool priority_sort (const struct list_elem *a_, const struct list_elem *b_,
+            void *aux );
+bool donation_sort (const struct list_elem *a_, const struct list_elem *b_,
+            void *aux ) ;
 
 /* Optimization barrier.
  *
