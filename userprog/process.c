@@ -20,6 +20,7 @@
 #include "intrinsic.h"
 #ifdef VM
 #include "vm/vm.h"
+#include "userprog/syscall.h"
 #endif
 
 static void process_cleanup (void);
@@ -809,11 +810,27 @@ install_page (void *upage, void *kpage, bool writable) {
  * If you want to implement the function for only project 2, implement it on the
  * upper block. */
 
-static bool
+bool
 lazy_load_segment (struct page *page, void *aux) {
 	/* TODO: Load the segment from the file */
 	/* TODO: This called when the first page fault occurs on address VA. */
 	/* TODO: VA is available when calling this function. */
+
+	struct lazy_load_arg *lazy_load_arg = (struct lazy_load_arg *)aux;
+
+	// 파일의 position을 ofs로 지정
+	file_seek(lazy_load_arg->file, lazy_load_arg->ofs);
+
+	// 파일을 read_bytes만큼 물리 프레임에 읽어 들임
+	if(file_read(lazy_load_arg->file, page->frame->kva, lazy_load_arg->read_bytes)!=(int)(lazy_load_arg->read_bytes)){
+		palloc_free_page(page->frame->kva);
+		return false;
+	}
+
+	// 다 읽은 지점부터 zero_bytes만큼 0으로 채움
+	memset(page->frame->kva+lazy_load_arg->read_bytes, 0, lazy_load_arg->zero_bytes);
+
+	return true;
 }
 
 /* Loads a segment starting at offset OFS in FILE at address
@@ -830,30 +847,39 @@ lazy_load_segment (struct page *page, void *aux) {
  *
  * Return true if successful, false if a memory allocation error
  * or disk read error occurs. */
+// 파일의 내용을 upage에 로드하는 함수
 static bool
 load_segment (struct file *file, off_t ofs, uint8_t *upage,
 		uint32_t read_bytes, uint32_t zero_bytes, bool writable) {
-	ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
-	ASSERT (pg_ofs (upage) == 0);
-	ASSERT (ofs % PGSIZE == 0);
+	ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0); // read_bytes + zero_bytes가 페이지 크기(PSIZE)의 배수인지 확인
+	ASSERT (pg_ofs (upage) == 0); // upage가 페이지 정렬되어 있는지 확인
+	ASSERT (ofs % PGSIZE == 0); // ofs가 페이지 정렬되어 있는지 확인
 
-	while (read_bytes > 0 || zero_bytes > 0) {
+	while (read_bytes > 0 || zero_bytes > 0) { // read_bytes와 zero_bytes가 0보다 큰 동안 루브 실행
 		/* Do calculate how to fill this page.
 		 * We will read PAGE_READ_BYTES bytes from FILE
 		 * and zero the final PAGE_ZERO_BYTES bytes. */
-		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+		// 페이지 채우는 방법 계산. 파일에서 PAGE_READ_BYTES 만큼 읽고, 나머지 PAGE_ZERO_BYTES 만큼 0으로 채움
+		size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE; // 최대로 읽을 수 있는 크기 PGSIZE
 		size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
 		/* TODO: Set up aux to pass information to the lazy_load_segment. */
-		void *aux = NULL;
-		if (!vm_alloc_page_with_initializer (VM_ANON, upage,
-					writable, lazy_load_segment, aux))
+		// loading을 위해 필요 정보 저장하는 구조체
+		struct lazy_load_arg *lazy_load_arg = (struct lazy_load_arg *)malloc(sizeof(struct lazy_load_arg));
+		lazy_load_arg->file = file;
+		lazy_load_arg->ofs = ofs;
+		lazy_load_arg->read_bytes = page_read_bytes;
+		lazy_load_arg->zero_bytes = page_zero_bytes;
+
+		// vm_alloc_page_with_initializer 호출, 대기중인 객체 생성
+		if (!vm_alloc_page_with_initializer (VM_ANON, upage, writable, lazy_load_segment, lazy_load_arg))
 			return false;
 
 		/* Advance. */
 		read_bytes -= page_read_bytes;
 		zero_bytes -= page_zero_bytes;
 		upage += PGSIZE;
+		ofs += page_read_bytes;
 	}
 	return true;
 }
@@ -862,6 +888,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (struct intr_frame *if_) {
 	bool success = false;
+
+	// USER_STACK에서 PGSIZE 만큼 아래로 내린 지점에 페이지 생성
 	void *stack_bottom = (void *) (((uint8_t *) USER_STACK) - PGSIZE);
 
 	/* TODO: Map the stack on stack_bottom and claim the page immediately.
@@ -869,6 +897,16 @@ setup_stack (struct intr_frame *if_) {
 	 * TODO: You should mark the page is stack. */
 	/* TODO: Your code goes here */
 
+	// stack_bottom에 페이지 하나 할당 받음
+	// VM_MAKER_0 : 스택이 저장된 메모리 페이지임을 식별하기 위해
+	// writable : argument_stack()에서 값을 넣어야 하니 True
+	if (vm_alloc_page(VM_ANON | VM_MARKER_0, stack_bottom, 1)){
+		// 할당 받은 페이지에 바로 물리 프레임 매핑
+		success = vm_claim_page(stack_bottom);
+		if(success)
+			// rsp를 변경. (argument_stack에서 이 위치부터 인자 push)
+			if_->rsp = USER_STACK;
+	}	
 	return success;
 }
 #endif /* VM */
