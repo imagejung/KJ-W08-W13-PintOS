@@ -1,0 +1,67 @@
+Kernel command line: -q -f put swap-iter put large.txt run swap-iter
+0 ~ 9fc00 1
+100000 ~ 9e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x9e0000 (Usable: 9,088 kB)
+Calibrating timer...  157,081,600 loops/s.
+hd0:0: detected 329 sector (164 kB) disk, model "QEMU HARDDISK", serial "QM00001"
+hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
+hd1:0: detected 7,932 sector (3 MB) disk, model "QEMU HARDDISK", serial "QM00003"
+hd1:1: detected 100,800 sector (49 MB) disk, model "QEMU HARDDISK", serial "QM00004"
+Formatting file system...done.
+Boot complete.
+Putting 'swap-iter' into the file system...
+Putting 'large.txt' into the file system...
+Executing 'swap-iter':
+(swap-iter) begin
+(swap-iter) write sparsely over page 0
+(swap-iter) write sparsely over page 512
+(swap-iter) write sparsely over page 1024
+(swap-iter) write sparsely over page 1536
+(swap-iter) write sparsely over page 2048
+(swap-iter) write sparsely over page 2560
+(swap-iter) write sparsely over page 3072
+(swap-iter) write sparsely over page 3584
+(swap-iter) write sparsely over page 4096
+(swap-iter) write sparsely over page 4608
+(swap-iter) open "large.txt"
+(swap-iter) mmap "large.txt"
+(swap-iter) check consistency in page 0
+(swap-iter) check consistency in page 512
+(swap-iter) check consistency in page 1024
+(swap-iter) check consistency in page 1536
+(swap-iter) check consistency in page 2048
+(swap-iter) check consistency in page 2560
+(swap-iter) check consistency in page 3072
+(swap-iter) check consistency in page 3584
+(swap-iter) check consistency in page 4096
+(swap-iter) check consistency in page 4608
+(swap-iter) end
+swap-iter: exit(0)
+Interrupt 0x0d (#GP General Protection Exception) at rip=8004218690
+ cr2=00000000004003e1 error=               0
+rax cccccccccccccccc rbx 000000004747ff60 rcx 0000000000000080 rdx 0000008004353e58
+rsp 00000080042a1dd0 rbp 00000080042a1de0 rsi 00000080042aa018 rdi 00000080042a3a30
+rip 0000008004218690 r8 00000080042a1de8  r9 000000800421b291 r10 0000000000000000
+r11 0000000000000206 r12 000000800421cda2 r13 000001042a100000 r14 000080042a104800
+r15 0000800422add800 rflags 00000202
+es: 001b ds: 001b cs: 0008 ss: 0010
+Kernel PANIC at ../../userprog/exception.c:260 in kill(): Kernel bug - unexpected interrupt in kernel
+Call stack: 0x8004217e18 0x800421cb2c 0x8004208d0e 0x800420912c 0x80042186d3 0x800421a3ba 0x80042216d8 0x800421bd10 0x800421bc8c 0x8004207179 0x800421d15d 0x800421ce29 0x800421cccb 0x400e85 0Interrupt 0x0d (#GP General Protection Exception) at rip=8004214e52
+ cr2=00000000004003e1 error=               0
+rax 0000800421a41300 rbx 000000004747ff60 rcx 00000080040b8000 rdx 00000000000003d4
+rsp 00000080042a1c10 rbp 00000080042a1c20 rsi 0000000000009f0f rdi 0000000000000000
+rip 0000008004214e52 r8 00000080042a1b28  r9 000000800421b291 r10 0000000000000000
+r11 0000000000000206 r12 000000800421cda2 r13 000001042a100000 r14 000080042a104800
+r15 0000800422add800 rflags 00000006
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC recursion at ../../userprog/exception.c:260 in kill().
+Timer: 2484 ticks
+Thread: 30 idle ticks, 234 kernel ticks, 2220 user ticks
+hd0:0: 0 reads, 0 writes
+hd0:1: 11858 reads, 15902 writes
+hd1:0: 7932 reads, 0 writes
+hd1:1: 44344 reads, 79616 writes
+Console: 3294 characters output
+Key

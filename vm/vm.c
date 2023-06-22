@@ -18,6 +18,8 @@ vm_init (void) {
 	register_inspect_intr ();
 	/* DO NOT MODIFY UPPER LINES. */
 	/* TODO: Your code goes here. */
+	list_init(&frame_table);
+	lock_init(&frame_table_lock);
 }
 
 /* Get the type of the page. This function is useful if you want to know the
@@ -91,12 +93,13 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 	struct page *page = NULL;
 	/* TODO: Fill this function. */
 	// Project3 Memory Management
-	page = malloc(sizeof(struct page));
+	page = (struct page *)malloc(sizeof(struct page));
 	struct hash_elem *e;
 
 	// va에 해당하는 hash_elem 찾기
-	page->va = va;
-	e = hash_find(&spt, &page->hash_elem);
+	page->va = pg_round_down(va);
+	e = hash_find(&spt->spt_hash, &page->hash_elem);
+	free(page);
 
 	// 해당하는 hash_elem 있으면 해당 페이지 반환
 	return e != NULL ? hash_entry(e, struct page, hash_elem) : NULL;
@@ -107,14 +110,14 @@ spt_find_page (struct supplemental_page_table *spt UNUSED, void *va UNUSED) {
 bool
 spt_insert_page (struct supplemental_page_table *spt UNUSED,
 		struct page *page UNUSED) {
-	int succ = false;
 	/* TODO: Fill this function. */
 	// Project3 Memory Management
-	return hash_insert(&spt, &page->hash_elem)==NULL ? true : false;
+	return hash_insert(&spt->spt_hash, &page->hash_elem)==NULL ? true : false;
 }
 
 void
 spt_remove_page (struct supplemental_page_table *spt, struct page *page) {
+	hash_delete(&spt->spt_hash, &page->hash_elem);
 	vm_dealloc_page (page);
 	return true;
 }
@@ -124,7 +127,27 @@ static struct frame *
 vm_get_victim (void) {
 	struct frame *victim = NULL;
 	 /* TODO: The policy for eviction is up to you. */
+	struct thread *curr = thread_current();
 
+	lock_acquire(&frame_table_lock);
+	struct list_elem *start = list_begin(&frame_table);
+	for (start; start != list_end(&frame_table); start = list_next(start))
+	{
+		victim = list_entry(start, struct frame, frame_elem);
+		if (victim->page == NULL) // frame에 할당된 페이지가 없는 경우 (page가 destroy된 경우 )
+		{
+			lock_release(&frame_table_lock);
+			return victim;
+		}
+		if (pml4_is_accessed(curr->pml4, victim->page->va))
+			pml4_set_accessed(curr->pml4, victim->page->va, 0);
+		else
+		{
+			lock_release(&frame_table_lock);
+			return victim;
+		}
+	}
+	lock_release(&frame_table_lock);
 	return victim;
 }
 
@@ -132,10 +155,11 @@ vm_get_victim (void) {
  * Return NULL on error.*/
 static struct frame *
 vm_evict_frame (void) {
-	struct frame *victim UNUSED = vm_get_victim ();
+	struct frame *victim = vm_get_victim ();
 	/* TODO: swap out the victim and return the evicted frame. */
-
-	return NULL;
+	if (victim->page)
+		swap_out(victim->page);
+	return victim;
 }
 
 /* palloc() and get frame. If there is no available page, evict the page
@@ -150,12 +174,19 @@ vm_get_frame (void) {
 	// kva = kernel virtual address
 	void *kva = palloc_get_page(PAL_USER); // user 메모리 영역에서 frame 가져옴 
 
-	if (kva == NULL) // page 할당 실패 
-		PANIC("todo"); // 나중에 swap_out 처리해줘야 함
+	if (kva == NULL){ // page 할당 실패 
+		struct frame *victim = vm_evict_frame();
+		victim->page = NULL;
+		return victim;
+	}
 
-	frame = malloc(sizeof(struct frame)); // 프레임 할당
+	frame = (struct frame *)malloc(sizeof(struct frame)); // 프레임 할당
 	frame->kva = kva; // 프레임 멤버 초기화
+	frame->page = NULL;
 
+	lock_acquire(&frame_table_lock);
+	list_push_back(&frame_table, &frame->frame_elem);
+	lock_release(&frame_table_lock);
 	ASSERT (frame != NULL);
 	ASSERT (frame->page == NULL);
 	return frame;

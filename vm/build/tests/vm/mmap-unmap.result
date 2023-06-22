@@ -1,0 +1,21 @@
+FAIL
+Kernel panic in run: PANIC at ../../userprog/exception.c:260 in kill(): Kernel bug - unexpected interrupt in kernel
+Call stack: 0x8004217e18 0x800421cb2c 0x8004208d0e 0x800420912c 0x800421862b 0x80042186d3 0x800421a3ba 0x80042216d8 0x800421bd10 0x800421bc8c 0x8004207179 0x800421d15d 0x800421cc56 0x8004208d0e 0x800420912c 0x400ce3 0x400d2c
+Translation of call stack:
+0x0000008004217e18: debug_panic (lib/kernel/debug.c:32)
+0x000000800421cb2c: kill (userprog/exception.c:266)
+0x0000008004208d0e: intr_handler (threads/interrupt.c:352)
+0x000000800420912c: intr_entry (threads/intr-stubs.o:?)
+0x000000800421862b: list_remove (lib/kernel/list.c:242)
+0x00000080042186d3: list_pop_front (lib/kernel/list.c:254)
+0x000000800421a3ba: hash_clear (lib/kernel/hash.c:59)
+0x00000080042216d8: supplemental_page_table_kill (vm/vm.c:365)
+0x000000800421bd10: process_cleanup (userprog/process.c:386)
+0x000000800421bc8c: process_exit (userprog/process.c:365)
+0x0000008004207179: thread_exit (threads/thread.c:301)
+0x000000800421d15d: create (userprog/syscall.c:166)
+0x000000800421cc56: page_fault (userprog/exception.c:309)
+0x0000008004208d0e: intr_handler (threads/interrupt.c:352)
+0x000000800420912c: intr_entry (threads/intr-stubs.o:?)
+0x0000000000400ce3: (unknown)
+0x0000000000400d2c: (unknown)

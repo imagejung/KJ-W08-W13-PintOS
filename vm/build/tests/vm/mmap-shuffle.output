@@ -1,0 +1,58 @@
+Kernel command line: -q -f put mmap-shuffle run mmap-shuffle
+0 ~ 9fc00 1
+100000 ~ 13e0000 1
+Pintos booting with: 
+	base_mem: 0x0 ~ 0x9fc00 (Usable: 639 kB)
+	ext_mem: 0x100000 ~ 0x13e0000 (Usable: 19,328 kB)
+Calibrating timer...  157,081,600 loops/s.
+hd0:0: detected 329 sector (164 kB) disk, model "QEMU HARDDISK", serial "QM00001"
+hd0:1: detected 20,160 sector (9 MB) disk, model "QEMU HARDDISK", serial "QM00002"
+hd1:0: detected 114 sector (57 kB) disk, model "QEMU HARDDISK", serial "QM00003"
+hd1:1: detected 8,064 sector (3 MB) disk, model "QEMU HARDDISK", serial "QM00004"
+Formatting file system...done.
+Boot complete.
+Putting 'mmap-shuffle' into the file system...
+Executing 'mmap-shuffle':
+(mmap-shuffle) begin
+(mmap-shuffle) create "buffer"
+(mmap-shuffle) open "buffer"
+(mmap-shuffle) mmap "buffer"
+(mmap-shuffle) init: cksum=3115322833
+(mmap-shuffle) shuffle 0: cksum=2274652418
+(mmap-shuffle) shuffle 1: cksum=2281360714
+(mmap-shuffle) shuffle 2: cksum=3504443700
+(mmap-shuffle) shuffle 3: cksum=2850516818
+(mmap-shuffle) shuffle 4: cksum=2406916757
+(mmap-shuffle) shuffle 5: cksum=3377643430
+(mmap-shuffle) shuffle 6: cksum=658047850
+(mmap-shuffle) shuffle 7: cksum=493716582
+(mmap-shuffle) shuffle 8: cksum=3359519593
+(mmap-shuffle) shuffle 9: cksum=143675990
+(mmap-shuffle) end
+mmap-shuffle: exit(0)
+Interrupt 0x0d (#GP General Protection Exception) at rip=8004218690
+ cr2=000000001001f000 error=               0
+rax cccccccccccccccc rbx 000000004747ff60 rcx 0000000000000080 rdx 0000008004257058
+rsp 000000800424add0 rbp 000000800424ade0 rsi 0000008004256098 rdi 000000800424cc30
+rip 0000008004218690 r8 000000800424ade8  r9 000000800421b291 r10 0000000000000000
+r11 0000000000000206 r12 000000800421cda2 r13 0000010424a00000 r14 0000800424a04800
+r15 0000800422add800 rflags 00000202
+es: 001b ds: 001b cs: 0008 ss: 0010
+Kernel PANIC at ../../userprog/exception.c:260 in kill(): Kernel bug - unexpected interrupt in kernel
+Call stack: 0x8004217e18 0x800421cb2c 0x8004208d0e 0x800420912c 0x80042186d3 0x800421a3ba 0x80042216d8 0x800421bd10 0x800421bc8c 0x8004207179 0x800421d15d 0x800421ce29 0x800421cccb 0x401104 0Interrupt 0x0d (#GP General Protection Exception) at rip=8004214e52
+ cr2=000000001001f000 error=               0
+rax 0000800421a41300 rbx 000000004747ff60 rcx 00000080040b8000 rdx 00000000000003d4
+rsp 000000800424ac10 rbp 000000800424ac20 rsi 0000000000009f0f rdi 0000000000000000
+rip 0000008004214e52 r8 000000800424ab28  r9 000000800421b291 r10 0000000000000000
+r11 0000000000000206 r12 000000800421cda2 r13 0000010424a00000 r14 0000800424a04800
+r15 0000800422add800 rflags 00000006
+es: 0010 ds: 0010 cs: 0008 ss: 0010
+Kernel PANIC recursion at ../../userprog/exception.c:260 in kill().
+Timer: 194 ticks
+Thread: 30 idle ticks, 33 kernel ticks, 131 user ticks
+hd0:0: 0 reads, 0 writes
+hd0:1: 368 reads, 588 writes
+hd1:0: 114 reads, 0 writes
+hd1:1: 0 reads, 0 writes
+Console: 2894 characters output
+Key
