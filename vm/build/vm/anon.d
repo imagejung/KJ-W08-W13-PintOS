@@ -6,6 +6,5 @@ vm/anon.o: ../../vm/anon.c ../../include/vm/vm.h \
  ../../include/vm/file.h ../../include/filesys/file.h \
  ../../include/filesys/off_t.h ../../include/threads/thread.h \
  ../../include/lib/debug.h ../../include/lib/kernel/list.h \
- ../../include/threads/threads/interrupt.h \
- ../../include/threads/threads/synch.h ../../include/threads/vm/vm.h \
+ ../../include/threads/interrupt.h ../../include/threads/synch.h \
  ../../include/devices/disk.h ../../include/lib/inttypes.h

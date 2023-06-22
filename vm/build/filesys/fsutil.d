@@ -8,4 +8,4 @@ filesys/fsutil.o: ../../filesys/fsutil.c ../../include/filesys/fsutil.h \
  ../../include/filesys/file.h ../../include/filesys/off_t.h \
  ../../include/filesys/filesys.h ../../include/threads/malloc.h \
  ../../include/threads/palloc.h ../../include/threads/vaddr.h \
- ../../include/threads/threads/loader.h
+ ../../include/threads/loader.h

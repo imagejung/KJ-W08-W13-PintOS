@@ -1,14 +1,37 @@
 FAIL
-Test output failed to match any acceptable form.
-
-Acceptable output:
-  (create-normal) begin
-  (create-normal) create quux.dat
-  (create-normal) end
-  create-normal: exit(0)
-Differences in `diff -u' format:
-- (create-normal) begin
-- (create-normal) create quux.dat
-- (create-normal) end
-- create-normal: exit(0)
-+ create-normal: exit(-1)
+Kernel panic in run: PANIC at ../../threads/thread.c:277 in thread_current(): assertion `is_thread(t)' failed.
+Call stack: 0x8004217e1d 0x80042070b8 0x800420a4af 0x800421b122 0x800421b2ef 0x800421b2d3 0x80042161c4 0x8004215966 0x800421b182 0x8004215320 0x8004208ed6 0x800421cafc 0x8004208d13 0x8004209131 0x8004218630 0x80042186d8 0x800421a3bf 0x8004221425 0x800421bd15 0x800421bc91 0x800420717e 0x800421d1a1 0x800421cc5b 0x8004208d13 0x8004209131 0x800421a5e8 0x8004220bc6 0x8004220ac5 0x800421c4e0 0x800421c0bc 0x800421b8ec 0x800421b49a 0x80042076c5
+Translation of call stack:
+0x0000008004217e1d: debug_panic (lib/kernel/debug.c:32)
+0x00000080042070b8: thread_current (threads/thread.c:278)
+0x000000800420a4af: lock_held_by_current_thread (threads/synch.c:259)
+0x000000800421b122: console_locked_by_current_thread (lib/kernel/console.c:111 (discriminator 2))
+0x000000800421b2ef: putchar_have_lock (lib/kernel/console.c:173)
+0x000000800421b2d3: vprintf_helper (lib/kernel/console.c:166)
+0x00000080042161c4: format_integer (lib/stdio.c:504)
+0x0000008004215966: __vprintf (lib/stdio.c:260)
+0x000000800421b182: vprintf (lib/kernel/console.c:123)
+0x0000008004215320: printf (lib/stdio.c:80)
+0x0000008004208ed6: intr_dump_frame (threads/interrupt.c:387)
+0x000000800421cafc: kill (userprog/exception.c:97)
+0x0000008004208d13: intr_handler (threads/interrupt.c:352)
+0x0000008004209131: intr_entry (threads/intr-stubs.o:?)
+0x0000008004218630: list_remove (lib/kernel/list.c:242)
+0x00000080042186d8: list_pop_front (lib/kernel/list.c:254)
+0x000000800421a3bf: hash_clear (lib/kernel/hash.c:59)
+0x0000008004221425: supplemental_page_table_kill (vm/vm.c:334)
+0x000000800421bd15: process_cleanup (userprog/process.c:1317)
+0x000000800421bc91: process_exit (userprog/process.c:1296)
+0x000000800420717e: thread_exit (threads/thread.c:301)
+0x000000800421d1a1: create (userprog/syscall.c:166)
+0x000000800421cc5b: page_fault (userprog/exception.c:145)
+0x0000008004208d13: intr_handler (threads/interrupt.c:352)
+0x0000008004209131: intr_entry (threads/intr-stubs.o:?)
+0x000000800421a5e8: hash_find (lib/kernel/hash.c:124)
+0x0000008004220bc6: spt_find_page (vm/vm.c:99)
+0x0000008004220ac5: vm_alloc_page_with_initializer (vm/vm.c:54)
+0x000000800421c4e0: load_segment (userprog/process.c:1755)
+0x000000800421c0bc: load (userprog/process.c:1489)
+0x000000800421b8ec: process_exec (userprog/process.c:1181)
+0x000000800421b49a: initd (userprog/process.c:1006)
+0x00000080042076c5: kernel_thread (threads/thread.c:482)

@@ -5,4 +5,4 @@ threads/malloc.o: ../../threads/malloc.c ../../include/threads/malloc.h \
  ../../include/lib/stdio.h ../../include/lib/stdarg.h \
  ../../include/lib/kernel/stdio.h ../../include/lib/string.h \
  ../../include/threads/palloc.h ../../include/threads/synch.h \
- ../../include/threads/vaddr.h ../../include/threads/threads/loader.h
+ ../../include/threads/vaddr.h ../../include/threads/loader.h

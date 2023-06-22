@@ -3,7 +3,7 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/mmu.h"
-#include "include/vm/vm.h"
+#include "vm/vm.h"
 #include "vm/inspect.h"
 #include "userprog/process.h"
 
@@ -164,6 +164,7 @@ vm_get_frame (void) {
 /* Growing the stack. */
 static void
 vm_stack_growth (void *addr UNUSED) {
+	vm_alloc_page(VM_ANON|VM_MARKER_0, pg_round_down(addr), 1);
 }
 
 /* Handle the fault on write_protected page */
@@ -186,10 +187,18 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 		return false;
 
 	if (not_present){ // physical page가 존재하지 않으면
+		void *rsp = f->rsp; // user access인 경우 rsp는 유저 stack 가리킴
+		if (!user) // kernel access인 경우 thread에서 rsp가져와야 함
+			rsp = thread_current()->rsp;
+
+		// 스택 확장으로 처리할수 있는 fault 이면, vm_stack_growth 호출
+		if ((USER_STACK - (1 << 20) <= rsp - 8 == addr && addr <= USER_STACK) || (USER_STACK - (1 << 20) <= rsp && rsp <= addr && addr <= USER_STACK))
+			vm_stack_growth(addr);
+		
 		page = spt_find_page(spt, addr);
 		if(page == NULL)
 			return false;
-		if(write == 1 && page->writable == 0)
+		if(write == 1 && page->writable == 0) // write 불가능한 페이지에 write요청한 경우
 			return false;
 		return vm_do_claim_page(page);
 	}
@@ -274,7 +283,7 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED, struct
         void *upage = src_page->va;
         bool writable = src_page->writable;
 
-        /* 1) type이 uninit이면 */
+        // 1) type이 uninit이면
         if (type == VM_UNINIT)
         { // uninit page 생성 & 초기화
             vm_initializer *init = src_page->uninit.init;
@@ -283,8 +292,24 @@ supplemental_page_table_copy (struct supplemental_page_table *dst UNUSED, struct
             continue;
         }
 
-        /* 2) type이 uninit이 아니면 */
-        if (!vm_alloc_page(type, upage, writable)) // uninit page 생성 & 초기화
+		// 2) type이 file이면
+		if (type == VM_FILE){
+			struct lazy_load_arg *file_aux = malloc(sizeof(struct lazy_load_arg));
+			file_aux->file = src_page->file.file;
+			file_aux->ofs = src_page->file.ofs;
+			file_aux->read_bytes = src_page->file.read_bytes;
+			file_aux->zero_bytes = src_page->file.zero_bytes;
+			if (!vm_alloc_page_with_initializer(type, upage, writable, NULL, file_aux))
+				return false;
+			struct page *file_page = spt_find_page(dst, upage);
+			file_backed_initializer(file_page, type, NULL);
+			file_page->frame = src_page->frame;
+			pml4_set_page(thread_current()->pml4, file_page->va, src_page->frame->kva, src_page->writable);
+			continue;
+		}
+
+        // 3) type이 anno 이면
+		if (!vm_alloc_page(type, upage, writable)) // uninit page 생성 & 초기화
             // init이랑 aux는 Lazy Loading에 필요함
             // 지금 만드는 페이지는 기다리지 않고 바로 내용을 넣어줄 것이므로 필요 없음
             return false;

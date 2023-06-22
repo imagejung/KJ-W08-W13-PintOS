@@ -34,6 +34,9 @@ tid_t fork(const char *thread_name, struct intr_frame *f);
 int exec(const char *cmd_line);
 int wait(int pid);
 
+void *mmap(void *addr, size_t length, int writable, int fd, off_t offset);
+void munmap(void *addr);
+
 
 /* System call.
  *
@@ -70,6 +73,9 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	// (구현) Project2 System Call
 	// R.rax = 시스템 콜 넘버
 	int syscall_n = f->R.rax ;
+	#ifdef VM
+		thread_current()->rsp = f->rsp;
+	#endif
 
 	switch (syscall_n)
 	{
@@ -115,9 +121,15 @@ syscall_handler (struct intr_frame *f UNUSED) {
 		case SYS_CLOSE:
 			close(f->R.rdi);
 			break;
+		// (구현) Project3
+		case SYS_MMAP:
+			f->R.rax = mmap(f->R.rdi, f->R.rsi, f->R.rdx, f->R.r10, f->R.r8);
+			break;
+		case SYS_MUNMAP:
+			munmap(f->R.rdi);
+			break;
 	}
 	// (구현) Project2 System Call
-
 }
 
 
@@ -307,4 +319,32 @@ int exec(const char *cmd_line){
 int wait(int pid)
 {
 	return process_wait(pid);
+}
+
+//(구현) Project3
+void *mmap(void *addr, size_t length, int writable, int fd, off_t offset){
+	if(!addr||addr != pg_round_down(addr))
+		return NULL;
+
+	if(offset != pg_round_down(offset))
+		return NULL;
+
+	if(!is_user_vaddr(addr) || !is_user_vaddr(addr + length))
+		return NULL;
+
+	if(spt_find_page(&thread_current()->spt, addr))
+		return NULL;
+
+	struct file *f = process_get_file(fd);
+	if(f==NULL)
+		return NULL;
+
+	if(file_length(f) == 0 || (int)length <= 0)
+		return NULL;
+
+	return do_mmap(addr, length, writable, f, offset);
+}
+
+void munmap(void *addr){
+	do_munmap(addr);
 }

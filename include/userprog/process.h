@@ -1,6 +1,5 @@
 #ifndef USERPROG_PROCESS_H
 #define USERPROG_PROCESS_H
-
 #include "threads/thread.h"
 
 int process_exec (void *f_name);
@@ -17,11 +16,7 @@ struct file *process_get_file(int fd);
 void process_close_file(int fd);
 struct thread *get_child_process(int pid);
 
-// (구현) Project4 annonymous 
 bool lazy_load_segment(struct page *page, void *aux);
-tid_t process_create_initd(const char *file_name);
-tid_t process_fork (const char *name, struct intr_frame *if_);
-
 struct lazy_load_arg
 {
     struct file *file;

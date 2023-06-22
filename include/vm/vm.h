@@ -50,6 +50,7 @@ struct page {
 	// Project3 Memory Management
 	struct hash_elem hash_elem;
 	bool writable;
+	int mapped_page_count; // file_backed_page인 경우, 매핑에 사용한 페이지 개수 (매핑 해제 시 사용)
 
 	/* Per-type data are binded into the union.
 	 * Each function automatically detects the current union */
@@ -68,6 +69,13 @@ struct frame {
 	void *kva;
 	struct page *page;
 	struct list_elem frame_elem;
+};
+
+struct slot
+{
+	struct page *page;
+	uint32_t slot_no;
+	struct list_elem swap_elem;
 };
 
 /* The function table for page operations.
@@ -117,5 +125,10 @@ void vm_dealloc_page (struct page *page);
 bool vm_claim_page (void *va);
 enum vm_type page_get_type (struct page *page);
 void hash_page_destroy(struct hash_elem *e, void *aux);
+
+struct list swap_table;
+struct list frame_table;
+struct lock swap_table_lock;
+struct lock frame_table_lock;
 
 #endif  /* VM_VM_H */

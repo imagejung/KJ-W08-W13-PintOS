@@ -6,5 +6,4 @@ threads/palloc.o: ../../threads/palloc.c ../../include/threads/palloc.h \
  ../../include/lib/stdarg.h ../../include/lib/kernel/stdio.h \
  ../../include/lib/string.h ../../include/threads/init.h \
  ../../include/threads/loader.h ../../include/threads/synch.h \
- ../../include/lib/kernel/list.h ../../include/threads/vaddr.h \
- ../../include/threads/threads/loader.h
+ ../../include/lib/kernel/list.h ../../include/threads/vaddr.h
