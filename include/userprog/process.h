@@ -17,6 +17,8 @@ void process_close_file(int fd);
 struct thread *get_child_process(int pid);
 
 bool lazy_load_segment(struct page *page, void *aux);
+tid_t process_create_initd(const char *file_name);
+tid_t process_fork(const char *name, struct intr_frame *if_);
 struct lazy_load_arg
 {
     struct file *file;

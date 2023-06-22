@@ -73,9 +73,9 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	// (구현) Project2 System Call
 	// R.rax = 시스템 콜 넘버
 	int syscall_n = f->R.rax ;
-	#ifdef VM
-		thread_current()->rsp = f->rsp;
-	#endif
+#ifdef VM
+	thread_current()->rsp = f->rsp;
+#endif
 
 	switch (syscall_n)
 	{
@@ -142,8 +142,8 @@ void check_address(void *addr)
 		exit(-1);
 	if (!is_user_vaddr(addr))
 		exit(-1);
-	if (pml4_get_page(thread_current()->pml4, addr) == NULL)
-		exit(-1);
+	// if (pml4_get_page(thread_current()->pml4, addr) == NULL)
+	// 	exit(-1);
 }
 
 // 
@@ -164,8 +164,11 @@ void exit(int status)
 // 
 bool create(const char *file, unsigned initial_size)
 {
+	lock_acquire(&filesys_lock);
 	check_address(file);
-	return filesys_create(file, initial_size);
+	bool success = filesys_create(file, initial_size);
+	lock_release(&filesys_lock);
+	return success;
 }
 
 // 
@@ -179,12 +182,17 @@ bool remove(const char *file)
 int open(const char *file_name)
 {
 	check_address(file_name);
+	lock_acquire(&filesys_lock);
 	struct file *file = filesys_open(file_name);
 	if (file == NULL)
+	{
+		lock_release(&filesys_lock);
 		return -1;
+	}
 	int fd = process_add_file(file);
 	if (fd == -1)
 		file_close(file);
+	lock_release(&filesys_lock);
 	return fd;
 }
 
@@ -257,7 +265,11 @@ int read(int fd, void *buffer, unsigned size)
 
 			lock_release(&filesys_lock);
 			return -1;
-		lock_acquire(&filesys_lock);
+		}
+		struct page *page = spt_find_page(&thread_current()->spt, buffer);
+		if (page && !page->writable){
+			lock_release(&filesys_lock);
+			exit(-1);
 		}
 		bytes_read = file_read(file, buffer, size);
 		lock_release(&filesys_lock);
