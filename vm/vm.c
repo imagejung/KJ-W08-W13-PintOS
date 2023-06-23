@@ -211,7 +211,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 	struct page *page = NULL;
 	/* TODO: Validate the fault */
 	/* TODO: Your code goes here */
-	if(addr == NULL)
+	if (addr == NULL)
 		return false;
 
 	if (is_kernel_vaddr(addr))
@@ -223,7 +223,7 @@ vm_try_handle_fault (struct intr_frame *f UNUSED, void *addr UNUSED,
 			rsp = thread_current()->rsp;
 
 		// 스택 확장으로 처리할수 있는 fault 이면, vm_stack_growth 호출
-		if ((USER_STACK - (1 << 20) <= rsp - 8 == addr && addr <= USER_STACK) || (USER_STACK - (1 << 20) <= rsp && rsp <= addr && addr <= USER_STACK))
+		if ((USER_STACK - (1 << 20) <= rsp - 8 && rsp - 8 == addr && addr <= USER_STACK) || (USER_STACK - (1 << 20) <= rsp && rsp <= addr && addr <= USER_STACK))
 			vm_stack_growth(addr);
 		
 		page = spt_find_page(spt, addr);
