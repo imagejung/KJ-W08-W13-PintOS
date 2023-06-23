@@ -352,21 +352,22 @@ void process_exit(void)
 	 * TODO: project2/process_termination.html).
 	 * TODO: We recommend you to implement process resource cleanup here. */
 
-	// FDT의 모든 파일을 닫고 메모리를 반환한다.
+	// FDT의 모든 파일을 닫고 메모리를 반환
 	for (int i = 2; i < FDT_COUNT_LIMIT; i++)
 	{
 		if (cur->fdt[i] != NULL)
 			close(i);
 	}
-	palloc_free_multiple(cur->fdt, FDT_PAGES);
-	file_close(cur->running); // 현재 실행 중인 파일도 닫는다.
+	//palloc_free_multiple(cur->fdt, FDT_PAGES);
+	palloc_free_page(cur->fdt);
+	file_close(cur->running); 
 
 	process_cleanup();
-	hash_destroy(&cur->spt.spt_hash, NULL); // todo 🚨
+	//hash_destroy(&cur->spt.spt_hash, NULL); 
 
-	// 자식이 종료될 때까지 대기하고 있는 부모에게 signal을 보낸다.
+	// 자식이 종료될 때까지 대기하고 있는 부모에게 signal을 보냄
 	sema_up(&cur->wait_sema);
-	// 부모의 signal을 기다린다. 대기가 풀리고 나서 do_schedule(THREAD_DYING)이 이어져 다른 스레드가 실행된다.
+	// 부모의 signal 받으면 do_schedule(THREAD_DYING)
 	sema_down(&cur->exit_sema);
 }
 
