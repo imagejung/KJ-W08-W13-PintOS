@@ -71,6 +71,9 @@ vm_alloc_page_with_initializer (enum vm_type type, void *upage, bool writable,
 			case VM_FILE:
 				page_initializer = file_backed_initializer;
 				break;
+			default:
+				NOT_REACHED();
+				break;
 		}
 
 		// uninit 타입의 페이지로 초기화

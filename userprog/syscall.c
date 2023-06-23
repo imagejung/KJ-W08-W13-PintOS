@@ -156,7 +156,7 @@ void halt(void)
 void exit(int status)
 {
 	struct thread *curr = thread_current();
-	curr->exit_status = status; // 이거 wait에서 사용?
+	curr->exit_status = status; 
 	printf("%s: exit(%d)\n", curr->name, status);
 	thread_exit();
 }
@@ -304,6 +304,7 @@ int write(int fd, const void *buffer, unsigned size)
 //
 tid_t fork(const char *thread_name, struct intr_frame *f)
 {
+	check_address(thread_name);
 	return process_fork(thread_name, f);
 }
 
