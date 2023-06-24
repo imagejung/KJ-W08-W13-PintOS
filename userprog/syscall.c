@@ -53,6 +53,8 @@ void munmap(void *addr);
 
 void
 syscall_init (void) {
+	lock_init(&filesys_lock);
+
 	write_msr(MSR_STAR, ((uint64_t)SEL_UCSEG - 0x10) << 48  |
 			((uint64_t)SEL_KCSEG) << 32);
 	write_msr(MSR_LSTAR, (uint64_t) syscall_entry);
@@ -62,8 +64,6 @@ syscall_init (void) {
 	 * mode stack. Therefore, we masked the FLAG_FL. */
 	write_msr(MSR_SYSCALL_MASK,
 			FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
-
-	lock_init(&filesys_lock);
 }
 
 /* The main system call interface */
@@ -86,6 +86,7 @@ syscall_handler (struct intr_frame *f UNUSED) {
 			exit(f->R.rdi);
 			break;
 		case SYS_FORK:
+			//memcpy (&thread_current ()->ptf, f, sizeof (struct intr_frame));
 			f->R.rax = fork(f->R.rdi, f);
 			break;
 		case SYS_EXEC:
@@ -164,8 +165,8 @@ void exit(int status)
 // 
 bool create(const char *file, unsigned initial_size)
 {
-	lock_acquire(&filesys_lock);
 	check_address(file);
+	lock_acquire(&filesys_lock);
 	bool success = filesys_create(file, initial_size);
 	lock_release(&filesys_lock);
 	return success;
@@ -175,7 +176,10 @@ bool create(const char *file, unsigned initial_size)
 bool remove(const char *file)
 {
 	check_address(file);
-	return filesys_remove(file);
+	lock_acquire(&filesys_lock);
+	bool success = filesys_remove(file);
+	lock_release(&filesys_lock);
+	return success;
 }
 
 // 
@@ -200,35 +204,54 @@ int open(const char *file_name)
 int filesize(int fd)
 {
 	struct file *file = process_get_file(fd);
-	if (file == NULL)
-		return -1;
-	return file_length(file);
+	
+	lock_acquire (&filesys_lock);
+	if (file){
+		lock_release(&filesys_lock);
+		return file_length(file);
+	}
+	lock_release(&filesys_lock);
+	return -1;
 }
 
 // 
 void seek(int fd, unsigned position)
 {
 	struct file *file = process_get_file(fd);
+	if (file){
+		lock_acquire(&filesys_lock);
+		file_seek(file, position);
+		lock_release(&filesys_lock);
+	}
 	if (file == NULL)
 		return;
-	file_seek(file, position);
 }
 
 //
 unsigned tell(int fd)
 {
 	struct file *file = process_get_file(fd);
+
+	lock_acquire(&filesys_lock);
+	if (file){
+		lock_release(&filesys_lock);
+		return file_tell(file);
+	}
 	if (file == NULL)
 		return;
-	return file_tell(file);
 }
 
 //
 void close(int fd)
 {
+	// if (fd < 2) // 예약된 파일 변경x
+	// 	return;
+	
 	struct file *file = process_get_file(fd);
+	
 	if (file == NULL)
 		return;
+	
 	file_close(file);
 	process_close_file(fd);
 }
@@ -255,14 +278,12 @@ int read(int fd, void *buffer, unsigned size)
 	{
 		if (fd < 2)
 		{
-
 			lock_release(&filesys_lock);
 			return -1;
 		}
 		struct file *file = process_get_file(fd);
 		if (file == NULL)
 		{
-
 			lock_release(&filesys_lock);
 			return -1;
 		}
@@ -325,6 +346,7 @@ int exec(const char *cmd_line){
 	if(process_exec(cmd_line_copy) == -1)
 		// 실행 실패시 종료
 		exit(-1);
+		return -1;
 
 	// 성공시 별도 반환x 
 }
